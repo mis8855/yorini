@@ -520,25 +520,6 @@ const NEG_ALSO = {egg:['yolk','quail'],yolk:['egg','quail'],gim:[],jeotgal:['aek
 const PARTICLES = ['이랑','하고','으로','에서','과','와','랑','은','는','이','가','을','를','의','도','만','에','로','및'];
 
 const QUICK = ['달걀','달걀 흰자','우유','김','라면','두부','아메리카노','김치','빵','소금','바나나','삼겹살'];
-const EXAMPLES = [
-  {kind:'food',text:'김밥'},{kind:'food',text:'사과'},{kind:'food',text:'카페라떼'},{kind:'food',text:'라면'},
-  {kind:'food',text:'소고기무국'},{kind:'food',text:'달걀 흰자'},
-  {kind:'label',text:'식빵 성분표',label:{name:'식빵',text:'밀가루(미국산), 정제수, 설탕, 탈지분유, 정제소금, 효모, 버터, 유화제'}}
-];
-
-const TIPS = [
-  '국물 맛은 멸치 대신 소고기·채소로 내 보세요. 무, 양파, 대파가 단맛을 채워 줘요.',
-  '간은 정제염(꽃소금)으로. 작은 통에 덜어 두면 헷갈리지 않아요.',
-  '달걀은 흰자만! 노른자 분리기 하나면 아침이 편해져요.',
-  '김 대신 깻잎이나 상추에 밥을 싸 보세요. 손에 쥐는 맛은 그대로예요.',
-  '라떼가 당기면 아메리카노에 시럽을 살짝. 우유만 빼면 돼요.',
-  '외식할 땐 "육수에 멸치나 다시마 들어가요?" 한마디면 충분해요.',
-  '가공식품은 원재료명에서 우유·유청·난황·해조·천일염을 먼저 찾아보세요.',
-  '간식은 과일과 무염 견과류가 가장 마음 편해요.',
-  '빵은 집에서 밀가루, 설탕, 정제염, 식용유로 구우면 통과예요.',
-  '저요오드식이 끝나는 날은 병원마다 달라요. 안내문의 날짜를 꼭 확인하세요.',
-  '양념은 미리 만들어 두면 편해요. 정제염, 설탕, 식초, 참기름이면 웬만한 무침은 해결돼요.',
-];
 const SAY_FALLBACK = {
   P:['고민할 필요 없는 통과예요.','이건 마음 놓고 식탁에 올려요.','저요오드 식탁의 든든한 멤버예요.'],
   C:['성분표 한 번만 같이 보고 갈까요?','집에서 만들면 통과, 사 오면 확인이에요.','조건부 통과예요. 확인 한 번이면 돼요.'],
@@ -733,18 +714,17 @@ function selfCheck(){
 /* ===== 3. 상태와 저장 (이 기기에만) ===== */
 const $ = id => document.getElementById(id);
 const KEY='yorini.v1';
-const S = {cart:[], sound:false, large:false, treat:'', start:'', name:'', exampleMode:true};
+const S = {cart:[], sound:false, large:false, treat:'', start:'', name:'', exampleMode:false};
 let uidN=0; const uid=()=> 'i'+Date.now().toString(36)+(uidN++);
 function load(){
   let d=null; try{ d=JSON.parse(localStorage.getItem(KEY)||'null') }catch(e){}
   if(d && typeof d==='object'){
     S.sound=!!d.sound; S.large=!!d.large; S.name=typeof d.name==='string'?d.name.slice(0,12):''; S.treat=d.treat||''; S.start=d.start||'';
     OV = (d.ov && typeof d.ov==='object') ? Object.fromEntries(Object.entries(d.ov).filter(([id,v])=>E[id]&&!E[id].dish&&E[id].v!=='X'&&RANK[v]!==undefined&&v!=='X')) : {};
-    if(Array.isArray(d.cart)){ S.cart=d.cart.filter(x=>x&&typeof x.text==='string').slice(0,30); S.exampleMode=!!d.exampleMode }
-    else { S.cart=EXAMPLES.map(x=>({...x,uid:uid()})); S.exampleMode=true }
-  } else { S.cart=EXAMPLES.map(x=>({...x,uid:uid()})); S.exampleMode=true }
+  }
+  S.cart=[]; S.exampleMode=false; // 접수 목록은 열 때마다 빈 상태로 시작한다
 }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify({sound:S.sound,large:S.large,treat:S.treat,start:S.start,name:S.name,ov:OV,cart:S.cart,exampleMode:S.exampleMode})) }catch(e){} }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify({sound:S.sound,large:S.large,treat:S.treat,start:S.start,name:S.name,ov:OV})) }catch(e){} }
 const evalItem = it => it.kind==='label' ? evaluateLabel(it.label&&it.label.name, it.label&&it.label.text) : evaluateFood(it.text);
 
 let toastT;
@@ -1153,7 +1133,7 @@ function init(){
   $('ph-label').onchange=e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=''; onPhoto('label',f) };
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') $('modal-root').innerHTML='' });
   const sc=selfCheck(); if(sc.issues.length) console.warn('[요린이] 규칙표 점검', sc.issues);
-  printReceipt(false);
+  $('receipt-box').innerHTML=receiptHTML(null);
 }
 init();
 </script>
