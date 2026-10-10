@@ -189,6 +189,9 @@ input[type="date"].field{min-height:44px;padding:8px 10px;width:100%}
 .rrow .w{grid-column:1/-1;font-size:.82rem;color:var(--muted)}
 .rrow .al{grid-column:1/-1;font-size:.74rem;color:var(--muted);overflow-wrap:anywhere}
 .rrow.changed{background:linear-gradient(90deg,var(--surface-2),transparent)}
+.seg2{display:inline-grid;grid-template-columns:auto auto;background:var(--surface-2);border-radius:11px;padding:3px;gap:3px}
+.seg2 button{border:0;background:transparent;border-radius:8px;min-height:38px;padding:0 12px;font-size:.85rem;font-weight:500;color:var(--muted)}
+.seg2 button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px var(--shadow)}
 .vseg{display:inline-grid;grid-template-columns:repeat(3,auto);border:1px solid var(--line);border-radius:9px;overflow:hidden}
 .vseg button{border:0;background:transparent;min-height:36px;padding:0 10px;font-size:.8rem;color:var(--muted)}
 .vseg button+button{border-left:1px solid var(--line)}
@@ -277,7 +280,7 @@ input[type="date"].field{min-height:44px;padding:8px 10px;width:100%}
       <h2>규칙표 <span class="sub" id="ov-count"></span></h2>
       <p class="hint" style="font-size:.88rem;color:var(--ink)">판정이 병원 안내문과 다르면 가능·주의·보류를 눌러 바꿔 주세요. 김밥·된장찌개 같은 요리는 재료의 판정을 따라 자동으로 바뀌어요.</p>
       <p class="hint">바꾼 내용은 이 기기에만 저장되고, 처방전에 '사용자 수정 기준(수정 N건)'으로 표시돼요.</p>
-      <div class="row" style="flex-wrap:wrap;align-items:center"><button class="tgl" id="r-only" type="button" aria-pressed="false">바꾼 항목만 보기</button><span style="flex:1"></span><button class="btn ghost sm" id="ov-reset" type="button">모두 기본으로</button></div>
+      <div class="row" style="flex-wrap:wrap;align-items:center"><div class="seg2" role="group" aria-label="규칙표 보기"><button type="button" id="r-all" aria-pressed="true">전체 보기</button><button type="button" id="r-only" aria-pressed="false">바꾼 항목만</button></div><span style="flex:1"></span><button class="btn ghost sm" id="ov-reset" type="button">모두 기본으로</button></div>
     </section>
     <div class="search"><label class="sr" for="r-q">규칙표 검색</label><input class="field" id="r-q" placeholder="음식 찾기 예: 두부, 천일염" style="width:100%" autocomplete="off"></div>
     <div id="rules"></div>
@@ -816,7 +819,7 @@ let onlyChanged=false;
 function renderRules(focus){
   const q=$('r-q').value.trim(); const box=$('rules'); box.innerHTML='';
   const n=Object.keys(OV).length; $('ov-count').textContent = n? '사용자 수정 기준 · 수정 '+n+'건' : '기본 규칙표';
-  $('r-only').setAttribute('aria-pressed',onlyChanged);
+  $('r-all').setAttribute('aria-pressed',!onlyChanged); $('r-only').setAttribute('aria-pressed',onlyChanged); $('r-only').textContent='바꾼 항목만 ('+n+')';
   const groups=[...CAT_ORDER.map(c=>({c,items:Object.values(E).filter(e=>!e.dish&&e.cat===c)})), {c:'DISH',items:Object.values(E).filter(e=>e.dish)}];
   let shown=0;
   groups.forEach(g=>{
@@ -845,7 +848,12 @@ function renderRules(focus){
     });
     box.appendChild(sec);
   });
-  if(!shown) box.innerHTML='<p class="empty">'+(onlyChanged&&!q?'아직 바꾼 항목이 없어요.':'"'+esc(q)+'"에 맞는 항목이 없어요. 규칙표에 없는 음식은 접수하면 \'확인 필요\'로 나와요.')+'</p>';
+  if(!shown){
+    if(onlyChanged){
+      box.innerHTML='<p class="empty">'+(q?'"'+esc(q)+'"에 맞는 바꾼 항목이 없어요.':'바꾼 항목이 없어요.')+'</p>';
+      const b=document.createElement('button'); b.type='button'; b.className='btn ghost sm'; b.textContent='전체 규칙표 보기'; b.onclick=()=>{ onlyChanged=false; renderRules() }; box.appendChild(b);
+    } else box.innerHTML='<p class="empty">"'+esc(q)+'"에 맞는 항목이 없어요. 규칙표에 없는 음식은 접수하면 \'확인 필요\'로 나와요.</p>';
+  }
   if(focus){ const b=box.querySelector('button[data-id="'+focus.id+'"][data-v="'+focus.v+'"]'); if(b) b.focus({preventScroll:true}) }
 }
 
@@ -1132,11 +1140,11 @@ function init(){
   $('d-treat').onchange=e=>{ S.treat=e.target.value; save(); renderDday() };
   $('d-start').onchange=e=>{ S.start=e.target.value; save(); renderDday() };
   $('d-name').oninput=e=>{ S.name=e.target.value.slice(0,12); save() };
-  $('r-q').oninput=()=>renderRules(); $('r-only').onclick=()=>{ onlyChanged=!onlyChanged; renderRules() };
+  $('r-q').oninput=()=>renderRules(); $('r-all').onclick=()=>{ onlyChanged=false; renderRules() }; $('r-only').onclick=()=>{ onlyChanged=true; renderRules() };
   let armed=false, armT;
   $('ov-reset').onclick=e=>{ const b=e.currentTarget; if(!Object.keys(OV).length){toast('바꾼 항목이 없어요.');return}
     if(!armed){ armed=true; b.textContent='한 번 더 누르면 초기화'; clearTimeout(armT); armT=setTimeout(()=>{armed=false;b.textContent='모두 기본으로'},3000); return }
-    armed=false; b.textContent='모두 기본으로'; OV={}; save(); renderRules(); renderCart(); toast('기본 규칙표로 되돌렸어요.') };
+    armed=false; b.textContent='모두 기본으로'; OV={}; onlyChanged=false; save(); renderRules(); renderCart(); toast('기본 규칙표로 되돌렸어요. 전체 항목을 보여 드려요.') };
   if($('ph-food')) $('ph-food').onchange=e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=''; onPhoto('food',f) };
   if($('ph-label')) $('ph-label').onchange=e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=''; onPhoto('label',f) };
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') $('modal-root').innerHTML='' });
