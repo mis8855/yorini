@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="저요오드식을 하는 분이 음식 이름이나 성분표를 올리면 먹어도 되는지 판정해 식단 처방전으로 보여 주는 앱">
+<meta name="description" content="저요오드식을 하는 분이 음식 이름을 입력하면 먹어도 되는지 판정해 식단 처방전으로 보여 주는 앱">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>요린이</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -240,36 +240,20 @@ input[type="date"].field{min-height:44px;padding:8px 10px;width:100%}
     </details>
 
     <section class="panel" aria-labelledby="in-h">
-      <h2 id="in-h">먹을 음식 접수 <span class="sub">글자 · 사진</span></h2>
-      <div class="seg" role="tablist" aria-label="입력 방식">
-        <button role="tab" id="tab-text" aria-selected="true" aria-controls="p-text" type="button">글자로</button>
-        <button role="tab" id="tab-photo" aria-selected="false" aria-controls="p-photo" type="button">사진으로</button>
-      </div>
-
-      <div id="p-text" role="tabpanel" aria-labelledby="tab-text" style="display:flex;flex-direction:column;gap:10px">
+      <h2 id="in-h">먹을 음식 접수</h2>
+      <div id="p-text" style="display:flex;flex-direction:column;gap:10px">
         <form class="row" id="f-text" autocomplete="off">
           <label class="sr" for="in-text">음식 이름</label>
           <input class="field" id="in-text" placeholder="예: 김밥, 카페라떼, 사과" maxlength="400" enterkeyhint="done">
           <button class="btn" type="submit">담기</button>
         </form>
-        <p class="hint">쉼표나 줄바꿈으로 여러 개를 한 번에 붙여넣어도 돼요. 포장지 성분표는 '사진으로'에서 확인해요.</p>
+        <p class="hint">쉼표나 줄바꿈으로 여러 개를 한 번에 붙여넣어도 돼요.</p>
         <p class="err" id="text-err" hidden></p>
         <div>
           <div class="lbl" style="margin-bottom:6px">자주 찾는 음식</div>
           <div class="chips" id="quick"></div>
         </div>
       </div>
-
-      <div id="p-photo" role="tabpanel" aria-labelledby="tab-photo" hidden style="flex-direction:column;gap:10px">
-        <div class="photo-btns">
-          <label class="photo-btn" for="ph-food">음식 찍기<small>한 접시, 한 그릇</small><input type="file" id="ph-food" accept="image/*" capture="environment"></label>
-          <label class="photo-btn" for="ph-label">성분표 찍기<small>포장지의 원재료명</small><input type="file" id="ph-label" accept="image/*" capture="environment"></label>
-        </div>
-        <p class="hint" id="ph-privacy">사진은 음식 이름과 성분표 글자를 읽는 데만 Claude에게 보내져요. 앱에는 저장하지 않아요. 먹어도 되는지는 앱의 규칙표가 판정해요.</p>
-        <p class="hint" id="ph-avail"><span class="spin" aria-hidden="true"></span>사진 인식을 준비하고 있어요.</p>
-        <div id="ph-status" hidden></div>
-      </div>
-
     </section>
 
     <section class="panel" aria-labelledby="cart-h">
@@ -848,7 +832,7 @@ function setView(v){
   window.scrollTo(0,0);
 }
 function setTab(name){
-  ['text','photo'].forEach(x=>{ const on=x===name; $('tab-'+x).setAttribute('aria-selected',on); $('p-'+x).hidden=!on });
+  ['text','photo'].forEach(x=>{ const on=x===name; const t=$('tab-'+x), p=$('p-'+x); if(!t||!p) return; t.setAttribute('aria-selected',on); p.hidden=!on });
 }
 function applyToggles(){
   $('t-sound').setAttribute('aria-pressed',S.sound); $('t-sound').textContent = S.sound?'소리 켜짐':'소리 꺼짐';
@@ -1028,7 +1012,7 @@ let SAMPLE=null, IMG=null, phCtl=null, lastPhoto=null;
 const PROMPT_FOOD='이 사진은 저요오드식을 하는 사람이 먹으려는 음식 사진이에요. 사진에 보이는 음식의 이름만 알려 주세요. 먹어도 되는지는 판단하지 마세요.\n규칙:\n- 한국에서 흔히 부르는 짧은 이름으로 (예: "김밥", "카페라떼", "사과", "된장찌개").\n- 여러 음식이 있으면 각각 따로, 최대 5개.\n- 눈에 띄는 재료(김, 달걀, 치즈, 새우, 우유 등)가 보이면 visible_ingredients에 적어 주세요.\n- 음식이 아니거나 알아볼 수 없으면 candidates는 빈 배열.\nJSON만 답하세요: {"candidates":[{"name":"김밥","confidence":"high"}],"visible_ingredients":["김","달걀"]}\nconfidence는 high, medium, low 중 하나.';
 const PROMPT_LABEL='이 사진은 가공식품 포장지의 원재료명(성분표) 사진이에요. 적힌 글자를 그대로 옮겨 주세요. 먹어도 되는지는 판단하지 마세요.\n- product_name: 제품명이 보이면 적고, 없으면 "".\n- ingredients_text: 원재료명 부분을 보이는 그대로(괄호 안 포함). 추측해서 채우지 말고 안 보이는 부분은 "…"로.\n- readable: 원재료명을 읽을 수 있었으면 true, 아니면 false.\nJSON만 답하세요: {"product_name":"","ingredients_text":"","readable":true}';
 function setAvail(ok){
-  const a=$('ph-avail');
+  const a=$('ph-avail'); if(!a) return;
   if(ok){ a.hidden=true }
   else { a.hidden=false; a.innerHTML='이 화면에서는 사진 인식을 쓸 수 없어요. 사진을 고르면 미리보기와 함께 직접 고를 수 있게 도와드릴게요.'; $('ph-privacy').textContent='사진은 이 기기 안에서 미리보기로만 보여요. 어디에도 보내거나 저장하지 않아요.' }
 }
@@ -1117,7 +1101,7 @@ function init(){
   $('in-text').addEventListener('paste',e=>{ const t=(e.clipboardData||window.clipboardData)?.getData('text')||''; if(/[,\n，、;]/.test(t)){ e.preventDefault(); addItems(t.split(/[,\n，、;·]+/)) } });
   $('clear').onclick=()=>{ if(!S.cart.length) return; S.cart=[]; S.exampleMode=false; save(); renderCart(); toast('접수 목록을 비웠어요.') };
   $('print').onclick=()=>printReceipt(true);
-  ['text','photo'].forEach(x=>$('tab-'+x).onclick=()=>setTab(x));
+  ['text','photo'].forEach(x=>{ const t=$('tab-'+x); if(t) t.onclick=()=>setTab(x) });
   document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>setView(b.dataset.view));
   $('t-sound').onclick=()=>{ S.sound=!S.sound; applyToggles(); save(); if(S.sound){ try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); AC.resume() }catch(e){} } };
   $('t-large').onclick=()=>{ S.large=!S.large; applyToggles(); save() };
@@ -1129,8 +1113,8 @@ function init(){
   $('ov-reset').onclick=e=>{ const b=e.currentTarget; if(!Object.keys(OV).length){toast('바꾼 항목이 없어요.');return}
     if(!armed){ armed=true; b.textContent='한 번 더 누르면 초기화'; clearTimeout(armT); armT=setTimeout(()=>{armed=false;b.textContent='모두 기본으로'},3000); return }
     armed=false; b.textContent='모두 기본으로'; OV={}; save(); renderRules(); renderCart(); toast('기본 규칙표로 되돌렸어요.') };
-  $('ph-food').onchange=e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=''; onPhoto('food',f) };
-  $('ph-label').onchange=e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=''; onPhoto('label',f) };
+  if($('ph-food')) $('ph-food').onchange=e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=''; onPhoto('food',f) };
+  if($('ph-label')) $('ph-label').onchange=e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=''; onPhoto('label',f) };
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') $('modal-root').innerHTML='' });
   const sc=selfCheck(); if(sc.issues.length) console.warn('[요린이] 규칙표 점검', sc.issues);
   $('receipt-box').innerHTML=receiptHTML(null);
